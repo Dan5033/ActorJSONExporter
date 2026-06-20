@@ -14,13 +14,15 @@ A Foundry VTT module that exports actor data as JSON for use by external tools. 
 1. In Foundry, go to **Configuration & Setup → Add-on Modules → Install Module**.
 2. Paste the manifest URL into the **Manifest URL** field:
    ```
-   https://github.com/yourusername/actor-exporter/releases/latest/download/module.json
+   https://github.com/Dan5033/ActorJSONExporter/releases/latest/download/module.json
    ```
 3. Click **Install**.
 
+Because the manifest points at the **`latest` release**, Foundry will detect new versions automatically and show an **Update** button in **Manage Modules** whenever a new release is published.
+
 ### Manual installation
 
-1. Download the module ZIP and extract it into your Foundry `Data/modules/` directory.
+1. Download the latest `module.zip` from the [Releases page](https://github.com/Dan5033/ActorJSONExporter/releases/latest) and extract it into your Foundry `Data/modules/` directory.
 2. Make sure the folder is named `actor-exporter` and contains `module.json`.
 3. Restart Foundry.
 
@@ -116,6 +118,93 @@ actor-exporter/
 └── styles/
     └── actor-exporter.css               # Styles for the whitelist dialog
 ```
+
+---
+
+## Releasing updates (for maintainers)
+
+### One-time setup: add the release workflow
+
+A GitHub Actions workflow automates publishing, but it has to be committed directly on GitHub (the v0 integration is not permitted to push files under `.github/workflows/`). To add it:
+
+1. In your repo on GitHub, click **Add file → Create new file**.
+2. Name it `.github/workflows/release.yml`.
+3. Paste in the contents below and commit it to `main`.
+
+```yaml
+name: Release Module
+
+# Publishes a Foundry VTT module release whenever a version tag (e.g. v2.0.1) is pushed.
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Derive the version from the tag (strip the leading "v").
+      - name: Get version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      # Stamp the manifest with this version and pin the download to this exact release.
+      - name: Update module.json
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          REPO_URL: https://github.com/${{ github.repository }}
+        run: |
+          jq \
+            --arg version "$VERSION" \
+            --arg url "$REPO_URL" \
+            --arg manifest "$REPO_URL/releases/latest/download/module.json" \
+            --arg download "$REPO_URL/releases/download/${GITHUB_REF_NAME}/module.zip" \
+            '.version = $version | .url = $url | .manifest = $manifest | .download = $download' \
+            module.json > module.json.tmp
+          mv module.json.tmp module.json
+
+      # Bundle only the files the module needs at runtime.
+      - name: Create module.zip
+        run: |
+          zip -r module.zip \
+            module.json \
+            scripts/ \
+            templates/ \
+            styles/ \
+            README.md
+
+      # Attach module.json and module.zip to the GitHub release.
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            module.json
+            module.zip
+```
+
+### Publishing a new version
+
+Once the workflow exists:
+
+1. Bump the `version` field in `module.json` (e.g. `2.0.0` → `2.0.1`) and commit it to `main`.
+2. Create and push a matching version tag:
+   ```
+   git tag v2.0.1
+   git push origin v2.0.1
+   ```
+3. The workflow then:
+   - stamps `module.json` with the tag version and the correct `manifest`/`download` URLs,
+   - bundles the runtime files into `module.zip`,
+   - publishes a GitHub release with both `module.json` and `module.zip` attached.
+
+Since the install manifest points at the `latest` release, every existing user is offered the update inside Foundry automatically — no manifest URL changes required.
 
 ---
 
