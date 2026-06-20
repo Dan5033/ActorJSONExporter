@@ -270,22 +270,9 @@ class ActorExporter {
       // Create a file object
       const file = new File([data], filename, { type: "application/json" })
 
-      // V13 compatible file upload
-      // Use FileUpload.upload instead of FilePicker.upload for v13
-      if (typeof FileUpload !== "undefined") {
-        // V13 method
-        await FileUpload.upload({
-          source: file,
-          target: `data/${path}`,
-          notify: false,
-        })
-      } else {
-        // Fallback for v12 and earlier
-        const uploadOptions = {
-          notify: false,
-        }
-        await FilePicker.upload("data", dirPath, file, uploadOptions)
-      }
+      // Upload via the version-safe FilePicker implementation (v14: namespaced).
+      const FP = foundry?.applications?.apps?.FilePicker?.implementation ?? globalThis.FilePicker
+      await FP.upload("data", dirPath, file, { notify: false })
 
       // Double-check that the file was written
       const exists = await window.FileHelper.fileExists(path)
@@ -959,20 +946,40 @@ Hooks.once("init", () => {
   })
 })
 
-// Define the whitelist configuration application
-class ActorWhitelistConfig extends FormApplication {
-  static get defaultOptions() {
-    return foundry.utils.mergeObject(super.defaultOptions, {
-      id: "actor-whitelist-config",
+// Define the whitelist configuration application (Foundry v13+/v14 ApplicationV2)
+const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api
+
+class ActorWhitelistConfig extends HandlebarsApplicationMixin(ApplicationV2) {
+  static DEFAULT_OPTIONS = {
+    id: "actor-whitelist-config",
+    tag: "form",
+    window: {
       title: "Actor Whitelist Configuration",
-      template: "modules/actor-exporter/templates/actor-whitelist-config.hbs",
+      contentClasses: ["actor-whitelist-config"],
+    },
+    position: {
       width: 500,
       height: "auto",
+    },
+    form: {
+      handler: ActorWhitelistConfig.#onSubmit,
+      submitOnChange: false,
       closeOnSubmit: false,
-    })
+    },
+    actions: {
+      selectAll: ActorWhitelistConfig.#onSelectAll,
+      selectNone: ActorWhitelistConfig.#onSelectNone,
+      exportSelected: ActorWhitelistConfig.#onExportSelected,
+    },
   }
 
-  getData() {
+  static PARTS = {
+    form: {
+      template: "modules/actor-exporter/templates/actor-whitelist-config.hbs",
+    },
+  }
+
+  async _prepareContext() {
     // Get all actors
     const actors = game.actors.contents.map((actor) => {
       return {
@@ -988,46 +995,49 @@ class ActorWhitelistConfig extends FormApplication {
     }
   }
 
-  activateListeners(html) {
-    super.activateListeners(html)
-
-    // Handle select all/none buttons
-    html.find(".select-all").click(() => {
-      html.find('input[name^="actor_"]').prop("checked", true)
-    })
-
-    html.find(".select-none").click(() => {
-      html.find('input[name^="actor_"]').prop("checked", false)
-    })
-
-    // Handle export selected button
-    html.find(".export-selected").click(() => {
-      const selectedActors = []
-      html.find('input[name^="actor_"]:checked').each(function () {
-        const actorId = this.name.replace("actor_", "")
-        selectedActors.push(actorId)
-      })
-
-      let exportCount = 0
-      for (const actorId of selectedActors) {
-        const actor = game.actors.get(actorId)
-        if (actor) {
-          ActorExporter.exportActor(actor, false) // No notification
-          exportCount++
-        }
-      }
-
-      ui.notifications.info(`Exported ${exportCount} actors to JSON`)
+  // Select every actor checkbox
+  static #onSelectAll() {
+    this.element.querySelectorAll('input[name^="actor_"]').forEach((cb) => {
+      cb.checked = true
     })
   }
 
-  async _updateObject(event, formData) {
+  // Deselect every actor checkbox
+  static #onSelectNone() {
+    this.element.querySelectorAll('input[name^="actor_"]').forEach((cb) => {
+      cb.checked = false
+    })
+  }
+
+  // Export currently checked actors immediately
+  static #onExportSelected() {
+    const selectedActors = []
+    this.element.querySelectorAll('input[name^="actor_"]:checked').forEach((cb) => {
+      selectedActors.push(cb.name.replace("actor_", ""))
+    })
+
+    let exportCount = 0
+    for (const actorId of selectedActors) {
+      const actor = game.actors.get(actorId)
+      if (actor) {
+        ActorExporter.exportActor(actor, false) // No notification
+        exportCount++
+      }
+    }
+
+    ui.notifications.info(`Exported ${exportCount} actors to JSON`)
+  }
+
+  // Form submission handler (bound to the application instance)
+  static async #onSubmit(event, form, formData) {
+    const data = foundry.utils.expandObject(formData.object)
+
     // Update the use whitelist setting
-    await game.settings.set(ActorExporter.ID, "useWhitelist", formData.useWhitelist)
+    await game.settings.set(ActorExporter.ID, "useWhitelist", Boolean(data.useWhitelist))
 
     // Update the whitelist based on selected actors
     const selectedActors = []
-    for (const [key, value] of Object.entries(formData)) {
+    for (const [key, value] of Object.entries(data)) {
       if (key.startsWith("actor_") && value) {
         selectedActors.push(key.replace("actor_", ""))
       }
@@ -1036,6 +1046,9 @@ class ActorWhitelistConfig extends FormApplication {
     await game.settings.set(ActorExporter.ID, "actorWhitelist", selectedActors.join(","))
 
     ui.notifications.info("Actor whitelist updated")
+
+    // Re-render to reflect the saved state
+    this.render()
   }
 }
 

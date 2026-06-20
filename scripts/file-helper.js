@@ -1,10 +1,18 @@
 // File Helper class for Actor Exporter
 class FileHelper {
+  // Resolve the FilePicker implementation in a version-safe way.
+  // In Foundry v14 the global `FilePicker` was removed and must be
+  // accessed via the namespaced application class. v13 still exposes
+  // the global, so we fall back to it for backwards compatibility.
+  static get FilePicker() {
+    return foundry?.applications?.apps?.FilePicker?.implementation ?? globalThis.FilePicker
+  }
+
   // Check if a directory exists
   static async directoryExists(path) {
     try {
       // Use FilePicker to check if directory exists
-      await FilePicker.browse("data", path)
+      await this.FilePicker.browse("data", path)
       return true
     } catch (error) {
       // If we get an error, the directory doesn't exist
@@ -22,7 +30,7 @@ class FileHelper {
       const filename = lastSlashIndex !== -1 ? path.substring(lastSlashIndex + 1) : path
 
       // Browse the directory
-      const browseResult = await FilePicker.browse("data", dirPath)
+      const browseResult = await this.FilePicker.browse("data", dirPath)
 
       // Check if the file exists in the directory
       return browseResult.files.some((file) => file.endsWith(filename))
@@ -37,26 +45,19 @@ class FileHelper {
     try {
       const exists = await this.directoryExists(path)
       if (!exists) {
-        // V13 compatible directory creation
-        if (typeof FileSystem !== "undefined" && FileSystem.createDirectory) {
-          // V13 method
-          await FileSystem.createDirectory(`data/${path}`, { notify: false })
-        } else {
-          // Fallback for v12 and earlier
-          await FilePicker.createDirectory("data", path)
-        }
+        await this.FilePicker.createDirectory("data", path, {})
         console.log(`Created directory: ${path}`)
       } else {
         console.log(`Directory already exists: ${path}`)
       }
       return true
     } catch (error) {
-      console.error(`Failed to create directory ${path}:`, error)
       // Don't throw the error if it's just that the directory already exists
       if (error.message && error.message.includes("EEXIST")) {
         console.log(`Directory already exists (from error): ${path}`)
         return true
       }
+      console.error(`Failed to create directory ${path}:`, error)
       throw error
     }
   }
@@ -77,21 +78,8 @@ class FileHelper {
       // Create a file object
       const file = new File([data], filename, { type: "application/json" })
 
-      // V13 compatible file upload
-      if (typeof FileUpload !== "undefined") {
-        // V13 method
-        await FileUpload.upload({
-          source: file,
-          target: `data/${path}`,
-          notify: false,
-        })
-      } else {
-        // Fallback for v12 and earlier
-        const uploadOptions = {
-          notify: false,
-        }
-        await FilePicker.upload("data", dirPath, file, uploadOptions)
-      }
+      // Upload via the (namespaced) FilePicker implementation
+      await this.FilePicker.upload("data", dirPath, file, { notify: false })
 
       console.log(`Successfully wrote file: ${path}`)
       return true
@@ -138,13 +126,11 @@ class FileHelper {
         return true
       }
 
-      // V13 compatible file deletion
-      if (typeof FileSystem !== "undefined" && FileSystem.deleteFile) {
-        // V13 method
-        await FileSystem.deleteFile(`data/${path}`, { notify: false })
+      // Some deployments restrict file deletion; guard for missing method
+      if (typeof this.FilePicker.deleteFile === "function") {
+        await this.FilePicker.deleteFile("data", path)
       } else {
-        // Fallback for v12 and earlier
-        await FilePicker.deleteFile("data", path)
+        console.warn(`FilePicker.deleteFile is not available; skipping delete for: ${path}`)
       }
 
       return true

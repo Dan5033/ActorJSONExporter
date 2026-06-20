@@ -2,11 +2,11 @@
   "id": "actor-exporter",
   "title": "Actor JSON Exporter",
   "description": "Exports actor data as JSON for external tools",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "compatibility": {
-    "minimum": "12",
-    "verified": "13",
-    "maximum": "13"
+    "minimum": "13",
+    "verified": "14",
+    "maximum": "14"
   },
   "authors": [
     {
