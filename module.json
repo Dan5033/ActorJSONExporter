@@ -21,6 +21,6 @@
   "url": "https://github.com/Dan5033/ActorJSONExporter",
   "readme": "https://github.com/Dan5033/ActorJSONExporter/blob/main/README.md",
   "bugs": "https://github.com/Dan5033/ActorJSONExporter/issues",
-  "manifest": "https://github.com/Dan5033/ActorJSONExporter/releases/latest/download/module.json",
-  "download": "https://github.com/Dan5033/ActorJSONExporter/releases/latest/download/module.zip"
+  "manifest": "https://github.com/Dan5033/ActorJSONExporter/releases/download/v1/module.json",
+  "download": "https://github.com/Dan5033/ActorJSONExporter/archive/refs/tags/v1.zip"
 }
