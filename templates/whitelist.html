@@ -1,0 +1,48 @@
+<form>
+  <div class="form-group">
+    <label for="useWhitelist">Enable Actor Whitelist</label>
+    <div class="form-fields">
+      <input type="checkbox" name="useWhitelist" id="useWhitelist" {{#if useWhitelist}}checked{{/if}}>
+    </div>
+    <p class="notes">When enabled, only actors in the whitelist will be exported</p>
+  </div>
+  
+  <div class="form-group">
+    <label>Actors to Export</label>
+    <div class="form-fields buttons">
+      <button type="button" class="select-all">Select All</button>
+      <button type="button" class="select-none">Select None</button>
+      <button type="button" class="export-selected">Export Selected Now</button>
+    </div>
+  </div>
+  
+  <div class="actor-list">
+    {{#each actors as |actor|}}
+    <div class="form-group">
+      <label for="actor_{{actor.id}}">{{actor.name}}</label>
+      <div class="form-fields">
+        <input type="checkbox" name="actor_{{actor.id}}" id="actor_{{actor.id}}" {{#if actor.isWhitelisted}}checked{{/if}}>
+      </div>
+    </div>
+    {{/each}}
+  </div>
+  
+  <button type="submit" name="submit">
+    <i class="fas fa-save"></i> Save Whitelist
+  </button>
+</form>
+
+<style>
+  .actor-list {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid #7a7971;
+    padding: 0.5em;
+    margin-bottom: 1em;
+  }
+  
+  .buttons {
+    display: flex;
+    gap: 0.5em;
+  }
+</style>

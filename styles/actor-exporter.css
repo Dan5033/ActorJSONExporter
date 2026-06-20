@@ -1,0 +1,36 @@
+/* Actor Exporter Styles */
+
+.actor-export,
+.actor-whitelist {
+  flex: 0 0 auto;
+  margin-left: 4px;
+  font-size: 12px;
+}
+
+.actor-export-single,
+.actor-whitelist-toggle {
+  flex: 0 0 auto;
+  margin-right: 8px;
+  font-size: 14px;
+}
+
+.actor-whitelist-toggle {
+  color: #999;
+}
+
+.actor-whitelist-toggle.active {
+  color: #4caf50;
+}
+
+#actor-whitelist-config .actor-list {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid #7a7971;
+  padding: 0.5em;
+  margin-bottom: 1em;
+}
+
+#actor-whitelist-config .buttons {
+  display: flex;
+  gap: 0.5em;
+}
