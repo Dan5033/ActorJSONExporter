@@ -14,16 +14,18 @@ A Foundry VTT module that exports actor data as JSON for use by external tools. 
 1. In Foundry, go to **Configuration & Setup → Add-on Modules → Install Module**.
 2. Paste the manifest URL into the **Manifest URL** field:
    ```
-   https://github.com/Dan5033/ActorJSONExporter/releases/latest/download/module.json
+   https://raw.githubusercontent.com/Dan5033/ActorJSONExporter/main/module.json
    ```
 3. Click **Install**.
 
-Because the manifest points at the **`latest` release**, Foundry will detect new versions automatically and show an **Update** button in **Manage Modules** whenever a new release is published.
+This manifest reads `module.json` straight from the `main` branch, so it works without any published GitHub release. Foundry compares the `version` field and shows an **Update** button in **Manage Modules** whenever you bump the version on `main`.
+
+> If you prefer versioned releases, you can instead point Foundry at `https://github.com/Dan5033/ActorJSONExporter/releases/latest/download/module.json` — but that URL only works after you publish a GitHub release with `module.json` attached (see [Releasing updates](#releasing-updates-for-maintainers)).
 
 ### Manual installation
 
-1. Download the latest `module.zip` from the [Releases page](https://github.com/Dan5033/ActorJSONExporter/releases/latest) and extract it into your Foundry `Data/modules/` directory.
-2. Make sure the folder is named `actor-exporter` and contains `module.json`.
+1. Download the repo as a ZIP from `https://github.com/Dan5033/ActorJSONExporter/archive/refs/heads/main.zip` and extract it into your Foundry `Data/modules/` directory.
+2. Make sure the folder is named `actor-exporter` and contains `module.json` (rename the extracted `ActorJSONExporter-main` folder if needed).
 3. Restart Foundry.
 
 After installing, open your world and enable **Actor JSON Exporter** in **Game Settings → Manage Modules**.
